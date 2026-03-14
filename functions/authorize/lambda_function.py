@@ -6,6 +6,8 @@ from auth0.authentication.token_verifier import (
     AsymmetricSignatureVerifier,
 )
 
+# Reference: https://auth0.com/docs/customize/integrations/aws/aws-api-gateway-custom-authorizers
+
 AUDIENCE = os.environ.get("AUDIENCE")
 TOKEN_ISSUER = os.environ.get("TOKEN_ISSUER")
 JWKS_URI = os.environ.get("JWKS_URI")
@@ -63,7 +65,7 @@ def authenticate(params: dict) -> dict:
     }
 
 
-def handler(event, context):
+def lambda_handler(event, context):
     try:
         data = authenticate(event)
     except Exception as err:
