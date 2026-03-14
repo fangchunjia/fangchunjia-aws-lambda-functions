@@ -59,23 +59,21 @@ jobs:
       - name: Deploy Lambda Environment Variables
         run: |
           ENV_FILE="${{ matrix.function.dir }}/.env"
-
+          
           if [ ! -f "$ENV_FILE" ]; then
             echo "No .env file found at $ENV_FILE, skipping env var deployment."
             exit 0
           fi
-
-          # Parse .env into {"KEY":"VALUE",...} JSON, skipping comments and blank lines
+          
+          # Build JSON using jq to avoid shell quoting issues
           ENV_JSON=$(grep -v '^\s*#' "$ENV_FILE" | grep -v '^\s*$' | \
-            awk -F '=' '{
-              key = $1
-              sub(/^[[:space:]]+/, "", key)
-              sub(/[[:space:]]+$/, "", key)
-              val = substr($0, index($0,"=")+1)
-              gsub(/^[[:space:]"'"'"']+|[[:space:]"'"'"']+$/, "", val)
-              printf "%s\"%s\":\"%s\"", (NR==1 ? "" : ","), key, val
-            }' | awk '{print "{"$0"}"}')
-
-          aws lambda update-function-configuration \
-            --function-name ${{ matrix.function.name }} \
-            --environment "Variables=$ENV_JSON"
+            while IFS='=' read -r key value; do
+              key=$(echo "$key" | xargs)
+              value=$(echo "$value" | xargs)
+              echo "$key=$value"
+            done | jq -Rn '
+              reduce inputs as $line (
+                {};
+                ($line | split("=")) as $parts |
+                . + {($parts[0]): ($parts[1:] | join("="))}
+              )' | jq '{Variables: .}')
