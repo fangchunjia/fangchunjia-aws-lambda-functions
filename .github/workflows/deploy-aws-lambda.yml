@@ -82,3 +82,7 @@ jobs:
                 ($line | split("=")) as $parts |
                 . + {($parts[0]): ($parts[1:] | join("="))}
               )' | jq '{Variables: .}')
+          
+          aws lambda update-function-configuration \
+                      --function-name ${{ matrix.function.name }} \
+                      --environment "$ENV_JSON"
