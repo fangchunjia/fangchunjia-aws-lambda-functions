@@ -1,18 +1,31 @@
 import os
 import re
-import asyncio
+import requests
 
-from auth0_api_python import ApiClient, ApiClientOptions
-from auth0_api_python.errors import BaseAuthError
+from authlib.jose import JsonWebToken
+from authlib.jose.errors import JoseError
 
 AUDIENCE = os.environ.get("AUDIENCE")
-AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")  # e.g. "fangchunjia.eu.auth0.com" (no https://)
+TOKEN_ISSUER = os.environ.get("TOKEN_ISSUER")
+JWKS_URI = os.environ.get("JWKS_URI")
 
-# ApiClient handles OIDC discovery and JWKS fetching/caching automatically
-_api_client = ApiClient(ApiClientOptions(
-    domain=AUTH0_DOMAIN,
-    audience=AUDIENCE,
-))
+# Restrict to RS256 only — prevents algorithm confusion attacks
+_jwt = JsonWebToken(["RS256"])
+
+# Cache JWKS at module level so it's reused across warm Lambda invocations
+_jwks = None
+
+def get_jwks() -> dict:
+    global _jwks
+    if _jwks is None:
+        _jwks = requests.get(JWKS_URI).json()
+    return _jwks
+
+
+_claims_options = {
+    "iss": {"essential": True, "value": TOKEN_ISSUER},
+    "aud": {"essential": True, "value": AUDIENCE},
+}
 
 
 def get_policy_document(effect: str, resource: str) -> dict:
@@ -48,13 +61,15 @@ def authenticate(params: dict) -> dict:
     print(params)
     token = get_token(params)
 
-    # verify_access_token raises BaseAuthError if the token is invalid
-    decoded = asyncio.run(_api_client.verify_access_token(token))
+    # decode() verifies the signature using the matching key from JWKS,
+    # then validate() checks iss, aud, exp, nbf
+    claims = _jwt.decode(token, get_jwks(), claims_options=_claims_options)
+    claims.validate()
 
     return {
-        "principalId": decoded["sub"],
+        "principalId": claims["sub"],
         "policyDocument": get_policy_document("Allow", params["methodArn"]),
-        "context": {"scope": decoded.get("scope", "")},
+        "context": {"scope": claims.get("scope", "")},
     }
 
 

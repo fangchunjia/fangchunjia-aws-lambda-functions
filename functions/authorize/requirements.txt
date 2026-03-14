@@ -1,1 +1,1 @@
-auth0-api-python
+authlib
