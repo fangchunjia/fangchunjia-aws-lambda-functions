@@ -1,24 +1,18 @@
 import os
 import re
+import asyncio
 
-from auth0.authentication.token_verifier import (
-    TokenVerifier,
-    AsymmetricSignatureVerifier,
-)
-
-# Reference: https://auth0.com/docs/customize/integrations/aws/aws-api-gateway-custom-authorizers
+from auth0_api_python import ApiClient, ApiClientOptions
+from auth0_api_python.errors import BaseAuthError
 
 AUDIENCE = os.environ.get("AUDIENCE")
-TOKEN_ISSUER = os.environ.get("TOKEN_ISSUER")
-JWKS_URI = os.environ.get("JWKS_URI")
+AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")  # e.g. "fangchunjia.eu.auth0.com" (no https://)
 
-# AsymmetricSignatureVerifier fetches and caches JWKS automatically
-_signature_verifier = AsymmetricSignatureVerifier(JWKS_URI)
-_token_verifier = TokenVerifier(
-    signature_verifier=_signature_verifier,
-    issuer=TOKEN_ISSUER,
+# ApiClient handles OIDC discovery and JWKS fetching/caching automatically
+_api_client = ApiClient(ApiClientOptions(
+    domain=AUTH0_DOMAIN,
     audience=AUDIENCE,
-)
+))
 
 
 def get_policy_document(effect: str, resource: str) -> dict:
@@ -54,9 +48,8 @@ def authenticate(params: dict) -> dict:
     print(params)
     token = get_token(params)
 
-    # verify() raises TokenValidationError if the token is invalid,
-    # and returns the decoded payload if valid
-    decoded = _token_verifier.verify(token)
+    # verify_access_token raises BaseAuthError if the token is invalid
+    decoded = asyncio.run(_api_client.verify_access_token(token))
 
     return {
         "principalId": decoded["sub"],
