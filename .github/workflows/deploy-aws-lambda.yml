@@ -56,6 +56,11 @@ jobs:
             --function-name ${{ matrix.function.name }} \
             --zip-file fileb://${{ matrix.function.dir }}/lambda.zip
 
+      - name: Wait for Lambda update
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ matrix.function.name }}
+
       - name: Deploy Lambda Environment Variables
         run: |
           ENV_FILE="${{ matrix.function.dir }}/.env"
