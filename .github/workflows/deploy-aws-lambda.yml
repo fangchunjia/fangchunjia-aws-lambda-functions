@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::093549766891:role/GitHubAction
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -38,13 +45,6 @@ jobs:
           zip -r ../lambda.zip .
           cd ..
           zip -g lambda.zip *.py
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::093549766891:role/GitHubAction
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy Lambda Function
         run: |
