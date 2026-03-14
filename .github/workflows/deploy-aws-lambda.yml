@@ -4,6 +4,10 @@ on:
     branches:
       - develop
 
+env:
+  AWS_REGION: eu-west-3
+  PYTHON_VERSION: '3.13'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -38,8 +42,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/GitHubActionRole
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::093549766891:role/GitHubAction
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy Lambda Function
         run: |
