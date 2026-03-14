@@ -4,5 +4,6 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
+    "auth0-python==5.0.0",
     "boto3>=1.42.66",
 ]
